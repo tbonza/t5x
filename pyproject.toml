@@ -3,5 +3,33 @@ name = "t5x"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.9"
-dependencies = []
+requires-python = "~=3.10"
+dependencies = [
+    "absl-py",
+    "clu",
+    "flax",
+    "gin-config",
+    "jax",
+    "jestimator",
+    "numpy>=2.2.3",
+    "optax",
+    "orbax-checkpoint",
+    "tensorflow>=2.11.1 ; sys_platform == 'linux'",
+    "tensorflow-text>=2.11.0 ; sys_platform == 'linux'",
+]
+
+[tool.uv.sources]
+absl-py = { git = "https://github.com/abseil/abseil-py.git" }
+clu = { git = "https://github.com/google/CommonLoopUtils" }
+flax = { git = "https://github.com/google/flax" }
+gin-config = { git = "https://github.com/google/gin-config.git" }
+jax = { git = "https://github.com/jax-ml/jax.git" }
+jestimator = { git = "https://github.com/google-research/jestimator" }
+optax = { git = "https://github.com/deepmind/optax" }
+orbax-checkpoint = { git = "https://github.com/google/orbax/", subdirectory = "checkpoint" }
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "ruff>=0.9.10",
+]
