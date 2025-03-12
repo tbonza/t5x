@@ -61,68 +61,66 @@ def train(
     batch_size: int = BATCH_SIZE,
     use_cached_tasks: bool = USE_CACHED_TASKS,
 ) -> fdl.Buildable:
-  """Generate a configuration for running T5X `train()` launcher."""
-  return fdl.Config(
-      t5x_train.train,
-      model=model,
-      model_dir=model_dir,
-      train_dataset_cfg=train_dataset_config(
-          mixture_or_task_name=mixture_or_task_name,
-          task_feature_lengths=copy.copy(task_feature_lengths),
-          batch_size=batch_size,
-          use_cached_tasks=use_cached_tasks,
-          mixture_or_task_module=mixture_or_task_module,
-      ),
-      train_eval_dataset_cfg=train_eval_dataset_config(
-          mixture_or_task_name=mixture_or_task_name,
-          task_feature_lengths=copy.copy(task_feature_lengths),
-          batch_size=batch_size,
-          use_cached_tasks=use_cached_tasks,
-          mixture_or_task_module=mixture_or_task_module,
-      ),
-      infer_eval_dataset_cfg=None,
-      checkpoint_cfg=checkpoint_config(),
-      partitioner=fdl.Config(
-          partitioning.PjitPartitioner,
-          num_partitions=1,
-          model_parallel_submesh=None,
-          logical_axis_rules=fdl.Config(
-              partitioning.standard_logical_axis_rules
-          ),
-      ),
-      trainer_cls=fdl.Partial(
-          trainer.Trainer,
-          num_microbatches=None,
-          learning_rate_fn=fdl.ArgFactory(
-              utils.create_learning_rate_scheduler,
-              factors='constant * rsqrt_decay',
-              base_learning_rate=1.0,
-              # 10k to keep consistent with T5/MTF defaults.
-              warmup_steps=10000,
-          ),
-      ),
-      total_steps=train_steps,
-      eval_steps=eval_steps,
-      eval_period=eval_period,
-      relative_steps=relative_steps,
-      random_seed=random_seed,
-      use_hardware_rng=use_hardware_rng,
-      summarize_config_fn=config_utils.summarize_fiddle_config,
-  )
+    """Generate a configuration for running T5X `train()` launcher."""
+    return fdl.Config(
+        t5x_train.train,
+        model=model,
+        model_dir=model_dir,
+        train_dataset_cfg=train_dataset_config(
+            mixture_or_task_name=mixture_or_task_name,
+            task_feature_lengths=copy.copy(task_feature_lengths),
+            batch_size=batch_size,
+            use_cached_tasks=use_cached_tasks,
+            mixture_or_task_module=mixture_or_task_module,
+        ),
+        train_eval_dataset_cfg=train_eval_dataset_config(
+            mixture_or_task_name=mixture_or_task_name,
+            task_feature_lengths=copy.copy(task_feature_lengths),
+            batch_size=batch_size,
+            use_cached_tasks=use_cached_tasks,
+            mixture_or_task_module=mixture_or_task_module,
+        ),
+        infer_eval_dataset_cfg=None,
+        checkpoint_cfg=checkpoint_config(),
+        partitioner=fdl.Config(
+            partitioning.PjitPartitioner,
+            num_partitions=1,
+            model_parallel_submesh=None,
+            logical_axis_rules=fdl.Config(partitioning.standard_logical_axis_rules),
+        ),
+        trainer_cls=fdl.Partial(
+            trainer.Trainer,
+            num_microbatches=None,
+            learning_rate_fn=fdl.ArgFactory(
+                utils.create_learning_rate_scheduler,
+                factors="constant * rsqrt_decay",
+                base_learning_rate=1.0,
+                # 10k to keep consistent with T5/MTF defaults.
+                warmup_steps=10000,
+            ),
+        ),
+        total_steps=train_steps,
+        eval_steps=eval_steps,
+        eval_period=eval_period,
+        relative_steps=relative_steps,
+        random_seed=random_seed,
+        use_hardware_rng=use_hardware_rng,
+        summarize_config_fn=config_utils.summarize_fiddle_config,
+    )
 
 
 def checkpoint_config() -> fdl.Buildable[utils.CheckpointConfig]:
-  return fdl.Config(
-      utils.CheckpointConfig,
-      restore=fdl.Config(utils.RestoreCheckpointConfig, path=[]),
-      save=fdl.Config(
-          utils.SaveCheckpointConfig,
-          period=1000,
-          dtype='float32',
-          keep=None,  # keep all checkpoints,
-          save_dataset=False,  # don't checkpoint dataset state
-      ),
-  )
+    return fdl.Config(
+        utils.CheckpointConfig,
+        restore=fdl.Config(utils.RestoreCheckpointConfig, path=[]),
+        save=fdl.Config(
+            utils.SaveCheckpointConfig,
+            period=1000,
+            dtype="float32",
+            keep=None,  # keep all checkpoints,
+            save_dataset=False,  # don't checkpoint dataset state
+        ),
+    )
 
 
 def train_dataset_config(
@@ -132,18 +130,18 @@ def train_dataset_config(
     use_cached_tasks: bool,
     mixture_or_task_module: Optional[str],
 ) -> fdl.Buildable[utils.DatasetConfig]:
-  return fdl.Config(
-      utils.DatasetConfig,
-      mixture_or_task_name=mixture_or_task_name,
-      task_feature_lengths=task_feature_lengths,
-      split='train',
-      batch_size=batch_size,
-      shuffle=True,
-      seed=None,  # use a new seed each run/restart
-      use_cached=use_cached_tasks,
-      pack=True,
-      module=mixture_or_task_module,
-  )
+    return fdl.Config(
+        utils.DatasetConfig,
+        mixture_or_task_name=mixture_or_task_name,
+        task_feature_lengths=task_feature_lengths,
+        split="train",
+        batch_size=batch_size,
+        shuffle=True,
+        seed=None,  # use a new seed each run/restart
+        use_cached=use_cached_tasks,
+        pack=True,
+        module=mixture_or_task_module,
+    )
 
 
 def train_eval_dataset_config(
@@ -153,15 +151,15 @@ def train_eval_dataset_config(
     use_cached_tasks: bool,
     mixture_or_task_module: Optional[str],
 ) -> fdl.Buildable[utils.DatasetConfig]:
-  return fdl.Config(
-      utils.DatasetConfig,
-      mixture_or_task_name=mixture_or_task_name,
-      task_feature_lengths=task_feature_lengths,
-      split='validation',
-      batch_size=batch_size,
-      shuffle=False,
-      seed=42,
-      use_cached=use_cached_tasks,
-      pack=True,
-      module=mixture_or_task_module,
-  )
+    return fdl.Config(
+        utils.DatasetConfig,
+        mixture_or_task_name=mixture_or_task_name,
+        task_feature_lengths=task_feature_lengths,
+        split="validation",
+        batch_size=batch_size,
+        shuffle=False,
+        seed=42,
+        use_cached=use_cached_tasks,
+        pack=True,
+        module=mixture_or_task_module,
+    )

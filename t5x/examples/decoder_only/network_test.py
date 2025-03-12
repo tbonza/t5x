@@ -14,14 +14,9 @@
 
 """Tests for network."""
 
-import os
-
 from absl import flags
 from absl.testing import absltest
-from absl.testing import parameterized
 import jax
-import numpy as np
-from t5x import test_utils
 
 # Parse absl flags test_srcdir and test_tmpdir.
 jax.config.parse_flags_with_absl()
@@ -29,5 +24,5 @@ jax.config.parse_flags_with_absl()
 FLAGS = flags.FLAGS
 
 
-if __name__ == '__main__':
-  absltest.main()
+if __name__ == "__main__":
+    absltest.main()

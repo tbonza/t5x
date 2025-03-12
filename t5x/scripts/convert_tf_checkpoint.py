@@ -45,86 +45,88 @@ def convert_checkpoint(
     save_dtype: jnp.dtype = jnp.float32,
     concurrent_gb: int = 16,
 ):
-  """Converts a TensorFlow checkpoint to a P5X checkpoint.
+    """Converts a TensorFlow checkpoint to a P5X checkpoint.
 
-  Args:
-    model:
-    tf_checkpoint_path: Path to a TensorFlow checkpoint to convert.
-    output_dir: Path to a directory to write the converted checkpoint.
-    save_dtype: What dtype to store the target parameters as.
-    concurrent_gb: Number of gigabtes of parameters to convert in parallel.
-      Actual RAM usage may be 4X this number.
-  """
+    Args:
+      model:
+      tf_checkpoint_path: Path to a TensorFlow checkpoint to convert.
+      output_dir: Path to a directory to write the converted checkpoint.
+      save_dtype: What dtype to store the target parameters as.
+      concurrent_gb: Number of gigabtes of parameters to convert in parallel.
+        Actual RAM usage may be 4X this number.
+    """
 
-  def initialize_train_state(rng):
-    initial_variables = model.get_initial_variables(  # pytype: disable=wrong-arg-types  # jax-array
-        rng=rng,
-        input_shapes={
-            'encoder_input_tokens': (1, 1),
-            'decoder_input_tokens': (1, 1),
-        },
+    def initialize_train_state(rng):
+        initial_variables = (
+            model.get_initial_variables(  # pytype: disable=wrong-arg-types  # jax-array
+                rng=rng,
+                input_shapes={
+                    "encoder_input_tokens": (1, 1),
+                    "decoder_input_tokens": (1, 1),
+                },
+            )
+        )
+        return train_state_lib.FlaxOptimTrainState.create(
+            model.optimizer_def, initial_variables
+        )
+
+    train_state = jax.eval_shape(initialize_train_state, jax.random.PRNGKey(0))
+
+    partitioner = partitioning.PjitPartitioner(1)
+
+    checkpointer = checkpoints.Checkpointer(
+        train_state, partitioner, output_dir, save_dtype=jnp.dtype(save_dtype)
     )
-    return train_state_lib.FlaxOptimTrainState.create(
-        model.optimizer_def, initial_variables
+
+    checkpointer.convert_from_tf_checkpoint(
+        tf_checkpoint_path, concurrent_gb=concurrent_gb
     )
 
-  train_state = jax.eval_shape(initialize_train_state, jax.random.PRNGKey(0))
 
-  partitioner = partitioning.PjitPartitioner(1)
+if __name__ == "__main__":
+    # pylint:disable=g-import-not-at-top
+    from absl import flags
+    import gin
+    from t5x import gin_utils
+    # pylint:disable=g-import-not-at-top
 
-  checkpointer = checkpoints.Checkpointer(
-      train_state, partitioner, output_dir, save_dtype=jnp.dtype(save_dtype)
-  )
+    FLAGS = flags.FLAGS
 
-  checkpointer.convert_from_tf_checkpoint(
-      tf_checkpoint_path, concurrent_gb=concurrent_gb
-  )
+    jax.config.parse_flags_with_absl()
 
-
-if __name__ == '__main__':
-  # pylint:disable=g-import-not-at-top
-  from absl import flags
-  import gin
-  from t5x import gin_utils
-  # pylint:disable=g-import-not-at-top
-
-  FLAGS = flags.FLAGS
-
-  jax.config.parse_flags_with_absl()
-
-  flags.DEFINE_multi_string(
-      'gin_file',
-      default=None,
-      help=(
-          'Path to gin configuration file. Multiple paths may be passed and '
-          'will be imported in the given order, with later configurations  '
-          'overriding earlier ones.'
-      ),
-  )
-
-  flags.DEFINE_multi_string(
-      'gin_bindings', default=[], help='Individual gin bindings'
-  )
-
-  flags.DEFINE_list(
-      'gin_search_paths',
-      default=['t5x/configs'],
-      help=(
-          'Comma-separated list of gin config path prefixes to be prepended '
-          'to suffixes given via `--gin_file`. If a file appears in. Only the '
-          'first prefix that produces a valid path for each suffix will be '
-          'used.'
-      ),
-  )
-
-  def main(_):
-    """True main function."""
-    convert_checkpoint_using_gin = gin.configurable(convert_checkpoint)
-
-    gin_utils.parse_gin_flags(
-        FLAGS.gin_search_paths, FLAGS.gin_file, FLAGS.gin_bindings
+    flags.DEFINE_multi_string(
+        "gin_file",
+        default=None,
+        help=(
+            "Path to gin configuration file. Multiple paths may be passed and "
+            "will be imported in the given order, with later configurations  "
+            "overriding earlier ones."
+        ),
     )
-    # Get gin-configured version of `convert_checkpoint`.
-    convert_checkpoint_using_gin()
 
-  gin_utils.run(main)
+    flags.DEFINE_multi_string(
+        "gin_bindings", default=[], help="Individual gin bindings"
+    )
+
+    flags.DEFINE_list(
+        "gin_search_paths",
+        default=["t5x/configs"],
+        help=(
+            "Comma-separated list of gin config path prefixes to be prepended "
+            "to suffixes given via `--gin_file`. If a file appears in. Only the "
+            "first prefix that produces a valid path for each suffix will be "
+            "used."
+        ),
+    )
+
+    def main(_):
+        """True main function."""
+        convert_checkpoint_using_gin = gin.configurable(convert_checkpoint)
+
+        gin_utils.parse_gin_flags(
+            FLAGS.gin_search_paths, FLAGS.gin_file, FLAGS.gin_bindings
+        )
+        # Get gin-configured version of `convert_checkpoint`.
+        convert_checkpoint_using_gin()
+
+    gin_utils.run(main)

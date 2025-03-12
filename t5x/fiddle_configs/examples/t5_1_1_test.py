@@ -21,23 +21,22 @@ from t5x.fiddle_configs.examples import t5_1_1
 
 
 def _prepare_config(config: fdl.Buildable) -> fdl.Buildable:
-  config = config_utils.prepare_to_summarize(config)
-  # Avoid executing config during fdl.Build
-  return fdl.cast(fdl.Partial, config)
+    config = config_utils.prepare_to_summarize(config)
+    # Avoid executing config during fdl.Build
+    return fdl.cast(fdl.Partial, config)
 
 
 class T511Test(absltest.TestCase):
+    def test_partial_build_small_wmt_finetune(self):
+        config = t5_1_1.small_wmt_finetune()
+        config = _prepare_config(config)
+        fdl.build(config)
 
-  def test_partial_build_small_wmt_finetune(self):
-    config = t5_1_1.small_wmt_finetune()
-    config = _prepare_config(config)
-    fdl.build(config)
-
-  def test_partial_build_small_wmt_eval(self):
-    config = t5_1_1.small_wmt_eval()
-    config = _prepare_config(config)
-    fdl.build(config)
+    def test_partial_build_small_wmt_eval(self):
+        config = t5_1_1.small_wmt_eval()
+        config = _prepare_config(config)
+        fdl.build(config)
 
 
-if __name__ == '__main__':
-  absltest.main()
+if __name__ == "__main__":
+    absltest.main()

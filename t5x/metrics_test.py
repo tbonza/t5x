@@ -22,69 +22,66 @@ from t5x import metrics
 
 
 class MetricsTest(parameterized.TestCase):
-
-  @parameterized.named_parameters(
-      ("0d_values", 2.0, 2.0),
-      ("1d_values", [1, 2, 3], 6.0),
-      ("2d_values", [[1, 2], [2, 3], [3, 4]], 15.0),
-      (
-          "3d_values",
-          [[[1, 2], [2, 3]], [[2, 1], [3, 4]], [[3, 1], [4, 1]]],
-          27.0,
-      ),
-  )
-  def test_sum(self, values, expected_result):
-    self.assertAlmostEqual(
-        metrics.Sum.from_model_output(values).compute(), expected_result
+    @parameterized.named_parameters(
+        ("0d_values", 2.0, 2.0),
+        ("1d_values", [1, 2, 3], 6.0),
+        ("2d_values", [[1, 2], [2, 3], [3, 4]], 15.0),
+        (
+            "3d_values",
+            [[[1, 2], [2, 3]], [[2, 1], [3, 4]], [[3, 1], [4, 1]]],
+            27.0,
+        ),
     )
+    def test_sum(self, values, expected_result):
+        self.assertAlmostEqual(
+            metrics.Sum.from_model_output(values).compute(), expected_result
+        )
 
-  def test_time_rate(self):
-    value = np.array([3.0])
-    duration = 2.0
-    metric = metrics.TimeRate.from_model_output(value).replace_duration(
-        duration
+    def test_time_rate(self):
+        value = np.array([3.0])
+        duration = 2.0
+        metric = metrics.TimeRate.from_model_output(value).replace_duration(duration)
+        self.assertAlmostEqual(metric.compute(), value / duration)
+
+    def test_time_rate_unset_duration(self):
+        value = jnp.array([3.0])
+        metric = metrics.TimeRate.from_model_output(value)
+        with self.assertRaises(ValueError):
+            metric.compute()
+
+    def test_time(self):
+        duration = 2.0
+        metric = metrics.Time().replace_duration(duration)
+        self.assertAlmostEqual(metric.compute(), duration)
+
+    def test_time_unset_duration(self):
+        metric = metrics.Time()
+        with self.assertRaises(ValueError):
+            metric.compute()
+
+    @parameterized.named_parameters(
+        ("0d_values", 2.0, 2.0),
+        ("1d_values", [1, 2, 3], 6.0),
     )
-    self.assertAlmostEqual(metric.compute(), value / duration)
+    def test_average_per_step(self, values, expected_result):
+        a = metrics.AveragePerStep.from_model_output(values)
+        m = metrics.set_step_metrics_num_steps({"a": a}, 1)
+        self.assertAlmostEqual(m["a"].compute(), expected_result)
 
-  def test_time_rate_unset_duration(self):
-    value = jnp.array([3.0])
-    metric = metrics.TimeRate.from_model_output(value)
-    with self.assertRaises(ValueError):
-      metric.compute()
+        steps = 5
+        b = metrics.AveragePerStep.from_model_output(values, steps=steps)
+        m = metrics.set_step_metrics_num_steps({"b": b}, steps)
+        self.assertAlmostEqual(m["b"].compute(), expected_result / steps)
 
-  def test_time(self):
-    duration = 2.0
-    metric = metrics.Time().replace_duration(duration)
-    self.assertAlmostEqual(metric.compute(), duration)
-
-  def test_time_unset_duration(self):
-    metric = metrics.Time()
-    with self.assertRaises(ValueError):
-      metric.compute()
-
-  @parameterized.named_parameters(
-      ("0d_values", 2.0, 2.0),
-      ("1d_values", [1, 2, 3], 6.0),
-  )
-  def test_average_per_step(self, values, expected_result):
-    a = metrics.AveragePerStep.from_model_output(values)
-    m = metrics.set_step_metrics_num_steps({"a": a}, 1)
-    self.assertAlmostEqual(m["a"].compute(), expected_result)
-
-    steps = 5
-    b = metrics.AveragePerStep.from_model_output(values, steps=steps)
-    m = metrics.set_step_metrics_num_steps({"b": b}, steps)
-    self.assertAlmostEqual(m["b"].compute(), expected_result / steps)
-
-  def test_steps_per_time(self):
-    steps = 8.0
-    duration = 2.0
-    metric = metrics.StepsPerTime.from_model_output(
-        steps=steps
-    ).replace_duration(duration)
-    metrics_dict = metrics.set_step_metrics_num_steps({"metric": metric}, steps)
-    self.assertAlmostEqual(metrics_dict["metric"].compute(), steps / duration)
+    def test_steps_per_time(self):
+        steps = 8.0
+        duration = 2.0
+        metric = metrics.StepsPerTime.from_model_output(steps=steps).replace_duration(
+            duration
+        )
+        metrics_dict = metrics.set_step_metrics_num_steps({"metric": metric}, steps)
+        self.assertAlmostEqual(metrics_dict["metric"].compute(), steps / duration)
 
 
 if __name__ == "__main__":
-  absltest.main()
+    absltest.main()

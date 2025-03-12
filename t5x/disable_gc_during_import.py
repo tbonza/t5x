@@ -36,29 +36,29 @@ import os
 
 @contextlib.contextmanager
 def disabled_gc():
-  """When used as context manager, prevents garbage collection in scope."""
-  if not gc.isenabled():
-    # GC is already disabled; don't make any changes.
-    yield
-    return
+    """When used as context manager, prevents garbage collection in scope."""
+    if not gc.isenabled():
+        # GC is already disabled; don't make any changes.
+        yield
+        return
 
-  gc.disable()
-  try:
-    yield
-  finally:
-    # We know that the original state was enabled because
-    # we didn't return above.
-    gc.enable()
+    gc.disable()
+    try:
+        yield
+    finally:
+        # We know that the original state was enabled because
+        # we didn't return above.
+        gc.enable()
 
 
 _original_importlib_import = builtins.__import__
 
 
 def gc_disabled_import(*args, **kwargs):
-  with disabled_gc():
-    return _original_importlib_import(*args, **kwargs)
+    with disabled_gc():
+        return _original_importlib_import(*args, **kwargs)
 
 
 def try_disable_gc_during_import():
-  if os.environ.get('EXPERIMENTAL_DISABLE_GC_DURING_IMPORT'):
-    builtins.__import__ = gc_disabled_import
+    if os.environ.get("EXPERIMENTAL_DISABLE_GC_DURING_IMPORT"):
+        builtins.__import__ = gc_disabled_import

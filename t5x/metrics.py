@@ -32,282 +32,286 @@ Scalar = Union[int, float, np.number, np.ndarray, jnp.ndarray]
 
 
 def _check_param(value, *, ndim=None, dtype=jnp.float32):
-  """Raises a `ValueError` if `value` does not match ndim/dtype.
+    """Raises a `ValueError` if `value` does not match ndim/dtype.
 
-  Args:
-    value: Value to be tested.
-    ndim: Expected dimensions.
-    dtype: Expected dtype.
+    Args:
+      value: Value to be tested.
+      ndim: Expected dimensions.
+      dtype: Expected dtype.
 
-  Raises:
-    A `ValueError` if `value` does not match `ndim` or `dtype`, or if `value`
-    is not an instance of `jnp.ndarray`.
-  """
-  if ndim is not None and value.ndim != ndim:
-    raise ValueError(f"Expected ndim={ndim}, got ndim={value.ndim}")
-  if dtype is not None and value.dtype != dtype:
-    raise ValueError(f"Expected dtype={dtype}, got dtype={value.dtype}")
+    Raises:
+      A `ValueError` if `value` does not match `ndim` or `dtype`, or if `value`
+      is not an instance of `jnp.ndarray`.
+    """
+    if ndim is not None and value.ndim != ndim:
+        raise ValueError(f"Expected ndim={ndim}, got ndim={value.ndim}")
+    if dtype is not None and value.dtype != dtype:
+        raise ValueError(f"Expected dtype={dtype}, got dtype={value.dtype}")
 
 
 @flax.struct.dataclass
 class Sum(clu_metrics.Metric):
-  """Computes the sum of a scalar or a batch of tensors.
+    """Computes the sum of a scalar or a batch of tensors.
 
-  See also documentation of `Metric`.
-  """
-
-  total: Scalar
-
-  @classmethod
-  def from_model_output(cls, values: Scalar, **_) -> clu_metrics.Metric:
-    """Initializes a Sum Metric from array (or singular) values.
-
-    Args:
-      values: array of values to sum (or a single value).
-
-    Returns:
-      A Sum object.
+    See also documentation of `Metric`.
     """
-    values = jnp.asarray(values)
-    if values.ndim == 0:
-      values = values[None]
-    return cls(total=values.sum())
 
-  def merge(self, other: "Sum") -> "Sum":
-    return type(self)(total=self.total + other.total)
+    total: Scalar
 
-  def compute(self) -> jnp.ndarray:
-    return jnp.array(self.total)
+    @classmethod
+    def from_model_output(cls, values: Scalar, **_) -> clu_metrics.Metric:
+        """Initializes a Sum Metric from array (or singular) values.
+
+        Args:
+          values: array of values to sum (or a single value).
+
+        Returns:
+          A Sum object.
+        """
+        values = jnp.asarray(values)
+        if values.ndim == 0:
+            values = values[None]
+        return cls(total=values.sum())
+
+    def merge(self, other: "Sum") -> "Sum":
+        return type(self)(total=self.total + other.total)
+
+    def compute(self) -> jnp.ndarray:
+        return jnp.array(self.total)
 
 
 @flax.struct.dataclass
 class Step(clu_metrics.Metric):
-  """Abstract class representing a per-step or step-per metric.
+    """Abstract class representing a per-step or step-per metric.
 
-  Tracks number of steps. Must be set manually using replace_steps, since the
-  use of microbatches may otherwise cause the computation to be incorrect.
+    Tracks number of steps. Must be set manually using replace_steps, since the
+    use of microbatches may otherwise cause the computation to be incorrect.
 
-  See also documentation of `Metric`.
-  """
-  steps: Optional[int] = 1
+    See also documentation of `Metric`.
+    """
 
-  def replace_steps(self, steps: int) -> "Step":
-    return self.replace(steps=steps)
+    steps: Optional[int] = 1
 
-  def compute(self) -> jnp.ndarray:
-    if self.steps is None:
-      raise ValueError(
-          "`steps` must be set by calling `replace_steps` before computing metric."
-      )
-    return jnp.array(self.steps)
+    def replace_steps(self, steps: int) -> "Step":
+        return self.replace(steps=steps)
+
+    def compute(self) -> jnp.ndarray:
+        if self.steps is None:
+            raise ValueError(
+                "`steps` must be set by calling `replace_steps` before computing metric."
+            )
+        return jnp.array(self.steps)
 
 
 @flax.struct.dataclass
 class AveragePerStep(Step):
-  """Represents per-step average (total divided by number of steps).
+    """Represents per-step average (total divided by number of steps).
 
-  See also documentation of `Step`.
-  """
-  total: Optional[Scalar] = None
-
-  @classmethod
-  def from_model_output(cls,
-                        values: Scalar,
-                        steps: Optional[int] = 1,
-                        **_) -> clu_metrics.Metric:
-    """Initializes an AveragePerStep Metric from array (or singular) values.
-
-    Args:
-      values: array of values to sum (or a single value).
-      steps: number of steps, defaults to 1.
-
-    Returns:
-      AveragePerStep object.
+    See also documentation of `Step`.
     """
-    values = jnp.asarray(values)
-    if values.ndim == 0:
-      values = values[None]
-    return cls(total=values.sum(), steps=steps)
 
-  def merge(self, other: "AveragePerStep") -> "AveragePerStep":
-    assert type(self) is type(other)
-    return type(self)(
-        total=self.total + other.total, steps=self.steps + other.steps)
+    total: Optional[Scalar] = None
 
-  def compute(self) -> jnp.ndarray:
-    steps = super().compute()
-    if self.total is None:
-      raise ValueError("`AveragePerStep` `total` cannot be None.")
-    return self.total / steps
+    @classmethod
+    def from_model_output(
+        cls, values: Scalar, steps: Optional[int] = 1, **_
+    ) -> clu_metrics.Metric:
+        """Initializes an AveragePerStep Metric from array (or singular) values.
+
+        Args:
+          values: array of values to sum (or a single value).
+          steps: number of steps, defaults to 1.
+
+        Returns:
+          AveragePerStep object.
+        """
+        values = jnp.asarray(values)
+        if values.ndim == 0:
+            values = values[None]
+        return cls(total=values.sum(), steps=steps)
+
+    def merge(self, other: "AveragePerStep") -> "AveragePerStep":
+        assert type(self) is type(other)
+        return type(self)(
+            total=self.total + other.total, steps=self.steps + other.steps
+        )
+
+    def compute(self) -> jnp.ndarray:
+        steps = super().compute()
+        if self.total is None:
+            raise ValueError("`AveragePerStep` `total` cannot be None.")
+        return self.total / steps
 
 
 @flax.struct.dataclass
 class Time(clu_metrics.Metric):
-  """Computes the sum of a float-valued metric over a period of time.
+    """Computes the sum of a float-valued metric over a period of time.
 
-  Duration (the denominator) must be set manually. This is because JAX does not
-  properly support time functions inside compiled functions. Calling time.time()
-  inside a compiled function results in the stored time being the compilation
-  time, not the run time.
+    Duration (the denominator) must be set manually. This is because JAX does not
+    properly support time functions inside compiled functions. Calling time.time()
+    inside a compiled function results in the stored time being the compilation
+    time, not the run time.
 
-  See also documentation of `Metric`.
-  """
-  duration: Optional[Scalar] = None
-
-  def merge(self, other: "Time") -> "Time":
-    return self
-
-  def compute(self) -> jnp.ndarray:
-    if self.duration is None:
-      raise ValueError(
-          "`Time` `duration` must be set by calling `replace_duration` before computing."
-      )
-    return jnp.array(self.duration)
-
-  def replace_duration(self, duration: Scalar) -> "Time":
-    """Replaces duration with the given value.
-
-    Should be used outside a compiled function to set the duration of the
-    metric.
-
-    Args:
-      duration: metric duration
-
-    Returns:
-      A new Time object.
+    See also documentation of `Metric`.
     """
-    return self.replace(duration=duration)
+
+    duration: Optional[Scalar] = None
+
+    def merge(self, other: "Time") -> "Time":
+        return self
+
+    def compute(self) -> jnp.ndarray:
+        if self.duration is None:
+            raise ValueError(
+                "`Time` `duration` must be set by calling `replace_duration` before computing."
+            )
+        return jnp.array(self.duration)
+
+    def replace_duration(self, duration: Scalar) -> "Time":
+        """Replaces duration with the given value.
+
+        Should be used outside a compiled function to set the duration of the
+        metric.
+
+        Args:
+          duration: metric duration
+
+        Returns:
+          A new Time object.
+        """
+        return self.replace(duration=duration)
 
 
 @flax.struct.dataclass
 class TimeRate(Time):
-  """Computes the sum of a float-valued metric over a period of time.
+    """Computes the sum of a float-valued metric over a period of time.
 
-  Duration (the denominator) must be set using replace_duration. This is because
-  JAX does not properly support time functions inside compiled functions.
-  Calling time.time() inside a compiled function results in the stored time
-  being the compilation time, not the run time.
+    Duration (the denominator) must be set using replace_duration. This is because
+    JAX does not properly support time functions inside compiled functions.
+    Calling time.time() inside a compiled function results in the stored time
+    being the compilation time, not the run time.
 
-  See also documentation of `Time` and `Metric`.
-  """
-
-  numerator: Optional[jnp.ndarray] = None
-
-  @classmethod
-  def from_model_output(cls, numerator: float, **_) -> clu_metrics.Metric:
-    """Initializes a TimeRate Metric from a float value (the numerator).
-
-    Args:
-      numerator: a float (numerator of the metric)
-
-    Returns:
-      A TimeRate object.
+    See also documentation of `Time` and `Metric`.
     """
-    return cls(numerator=numerator)  # pytype: disable=wrong-arg-types  # jax-ndarray
 
-  def merge(self, other: "TimeRate") -> "TimeRate":
-    assert_msg = "Merging with non-None durations is currently not supported."
-    assert self.duration is None and other.duration is None, assert_msg
-    return type(self)(numerator=self.numerator + other.numerator)
+    numerator: Optional[jnp.ndarray] = None
 
-  def compute(self) -> jnp.ndarray:
-    duration = super().compute()
-    return self.numerator / duration
+    @classmethod
+    def from_model_output(cls, numerator: float, **_) -> clu_metrics.Metric:
+        """Initializes a TimeRate Metric from a float value (the numerator).
+
+        Args:
+          numerator: a float (numerator of the metric)
+
+        Returns:
+          A TimeRate object.
+        """
+        return cls(
+            numerator=numerator
+        )  # pytype: disable=wrong-arg-types  # jax-ndarray
+
+    def merge(self, other: "TimeRate") -> "TimeRate":
+        assert_msg = "Merging with non-None durations is currently not supported."
+        assert self.duration is None and other.duration is None, assert_msg
+        return type(self)(numerator=self.numerator + other.numerator)
+
+    def compute(self) -> jnp.ndarray:
+        duration = super().compute()
+        return self.numerator / duration
 
 
 @flax.struct.dataclass
 class StepsPerTime(Step, Time):
-  """Represents a metric computed as number of steps per time.
+    """Represents a metric computed as number of steps per time.
 
-  See also documentation of `Step`.
-  """
-
-  @classmethod
-  def from_model_output(cls,
-                        steps: Optional[int] = 1,
-                        **_) -> clu_metrics.Metric:
-    """Initializes an StepsPerTime Metric.
-
-    Args:
-      steps: number of steps, defaults to 1.
-
-    Returns:
-      StepsPerTime object.
+    See also documentation of `Step`.
     """
-    return cls(steps=steps)
 
-  def merge(self, other: "StepsPerTime") -> "StepsPerTime":
-    assert type(self) is type(other)
-    return type(self)(steps=self.steps + other.steps)
+    @classmethod
+    def from_model_output(cls, steps: Optional[int] = 1, **_) -> clu_metrics.Metric:
+        """Initializes an StepsPerTime Metric.
 
-  def compute(self) -> jnp.ndarray:
-    steps = Step.compute(self)
-    duration = Time.compute(self)
-    return steps / duration
+        Args:
+          steps: number of steps, defaults to 1.
+
+        Returns:
+          StepsPerTime object.
+        """
+        return cls(steps=steps)
+
+    def merge(self, other: "StepsPerTime") -> "StepsPerTime":
+        assert type(self) is type(other)
+        return type(self)(steps=self.steps + other.steps)
+
+    def compute(self) -> jnp.ndarray:
+        steps = Step.compute(self)
+        duration = Time.compute(self)
+        return steps / duration
 
 
 def is_metric_obj(obj):
-  return isinstance(obj, clu_metrics.Metric)
+    return isinstance(obj, clu_metrics.Metric)
 
 
 def is_time_metric(obj):
-  return isinstance(obj, Time)
+    return isinstance(obj, Time)
 
 
 def create_metrics_dict(float_metrics_dict):
-  """Input: dict{str: float} | Output: dict{str: Metric}."""
-  return {k: Sum(v) for k, v in float_metrics_dict.items()}
+    """Input: dict{str: float} | Output: dict{str: Metric}."""
+    return {k: Sum(v) for k, v in float_metrics_dict.items()}
 
 
 def shape_obj_to_defined_obj(obj: clu_metrics.Metric):
-  """Converts shapes in Metric to zero arrays.
+    """Converts shapes in Metric to zero arrays.
 
-  obj should be a Metric object subclass where each member variable is a
-  ShapeDtypeStruct (from jax.eval_shape). A new object of the same class where
-  each member variable is an array of zeros with the same shape and type as
-  the corresponding variable defined by ShapeDtypeStruct.
+    obj should be a Metric object subclass where each member variable is a
+    ShapeDtypeStruct (from jax.eval_shape). A new object of the same class where
+    each member variable is an array of zeros with the same shape and type as
+    the corresponding variable defined by ShapeDtypeStruct.
 
-  Args:
-    obj: a clu.metrics.Metric object where each member variable is a
-      ShapeDtypeStruct (from jax.eval_shape)
+    Args:
+      obj: a clu.metrics.Metric object where each member variable is a
+        ShapeDtypeStruct (from jax.eval_shape)
 
-  Returns:
-    A Metric object with class variables initialized as zero arrays.
-  """
+    Returns:
+      A Metric object with class variables initialized as zero arrays.
+    """
 
-  def class_attr_shape(a):
-    attr = getattr(obj, a.name)
-    if isinstance(attr, clu_metrics.Metric):
-      return shape_obj_to_defined_obj(attr)
-    else:
-      if hasattr(attr, "shape"):
-        return jnp.zeros(shape=attr.shape, dtype=attr.dtype)
-      else:
-        return attr
+    def class_attr_shape(a):
+        attr = getattr(obj, a.name)
+        if isinstance(attr, clu_metrics.Metric):
+            return shape_obj_to_defined_obj(attr)
+        else:
+            if hasattr(attr, "shape"):
+                return jnp.zeros(shape=attr.shape, dtype=attr.dtype)
+            else:
+                return attr
 
-  return obj.__class__(
-      **{a.name: class_attr_shape(a) for a in dataclasses.fields(obj)})  # pytype: disable=wrong-arg-types  # re-none
+    return obj.__class__(
+        **{a.name: class_attr_shape(a) for a in dataclasses.fields(obj)}
+    )  # pytype: disable=wrong-arg-types  # re-none
 
 
 def set_time_metrics_duration(metrics, duration):
-  """Sets duration for TimeRate objects in metrics pytree."""
+    """Sets duration for TimeRate objects in metrics pytree."""
 
-  def fn(o):
-    if isinstance(o, Time):
-      return o.replace_duration(duration)
-    else:
-      return o
+    def fn(o):
+        if isinstance(o, Time):
+            return o.replace_duration(duration)
+        else:
+            return o
 
-  return jax.tree.map(fn, metrics, is_leaf=lambda obj: isinstance(obj, Time))
+    return jax.tree.map(fn, metrics, is_leaf=lambda obj: isinstance(obj, Time))
 
 
 def set_step_metrics_num_steps(metrics, num_steps):
-  """Sets steps for Step objects in metrics pytree."""
+    """Sets steps for Step objects in metrics pytree."""
 
-  def fn(o):
-    if isinstance(o, Step):
-      return o.replace_steps(num_steps)
-    else:
-      return o
+    def fn(o):
+        if isinstance(o, Step):
+            return o.replace_steps(num_steps)
+        else:
+            return o
 
-  return jax.tree.map(fn, metrics, is_leaf=is_metric_obj)
+    return jax.tree.map(fn, metrics, is_leaf=is_metric_obj)

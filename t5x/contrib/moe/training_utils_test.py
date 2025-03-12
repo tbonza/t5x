@@ -16,8 +16,9 @@
 
 import functools
 import os
+
 # Emulate 2 devices on CPU. Import before JAX.
-os.environ['XLA_FLAGS'] = '--xla_force_host_platform_device_count=2'
+os.environ["XLA_FLAGS"] = "--xla_force_host_platform_device_count=2"
 
 from absl.testing import absltest  # pylint: disable=g-import-not-at-top
 from flax import core as flax_core
@@ -29,73 +30,74 @@ from t5x.contrib.moe import training_utils
 
 
 class MatchFnTest(absltest.TestCase):
+    def test_regex_prefix(self):
+        match_fn = training_utils.match_fn(r".*test.*")
+        self.assertTrue(match_fn("/test/something"))
+        self.assertTrue(match_fn("to/test/or/not/"))
+        self.assertFalse(match_fn("no/match"))
 
-  def test_regex_prefix(self):
-    match_fn = training_utils.match_fn(r'.*test.*')
-    self.assertTrue(match_fn('/test/something'))
-    self.assertTrue(match_fn('to/test/or/not/'))
-    self.assertFalse(match_fn('no/match'))
-
-  def test_empty_prefix(self):
-    match_fn = training_utils.match_fn(None)
-    self.assertFalse(match_fn('/test/something'))
-    self.assertFalse(match_fn('to/test/or/not/'))
+    def test_empty_prefix(self):
+        match_fn = training_utils.match_fn(None)
+        self.assertFalse(match_fn("/test/something"))
+        self.assertFalse(match_fn("to/test/or/not/"))
 
 
 class ScaleShardedGradsTest(absltest.TestCase):
+    def test_scale_sharded_grads(self):
+        grads = flax_core.freeze(
+            {
+                "encoder": {
+                    "expert_layer": jnp.ones((2, 3)),
+                    "regular_layer": jnp.ones((1, 2)),
+                }
+            }
+        )
+        sharded_match_fn = training_utils.match_fn(r".*expert.*")
+        scaled_grads = training_utils.scale_sharded_grads(
+            grads, sharded_match_fn, scale_factor=100.0
+        )
 
-  def test_scale_sharded_grads(self):
-    grads = flax_core.freeze({
-        'encoder': {
-            'expert_layer': jnp.ones((2, 3)),
-            'regular_layer': jnp.ones((1, 2)),
-        }
-    })
-    sharded_match_fn = training_utils.match_fn(r'.*expert.*')
-    scaled_grads = training_utils.scale_sharded_grads(
-        grads, sharded_match_fn, scale_factor=100.0
-    )
-
-    expected_grads = flax_core.freeze({
-        'encoder': {
-            'expert_layer': 100.0 * jnp.ones((2, 3)),
-            'regular_layer': jnp.ones((1, 2)),
-        }
-    })
-    jax.tree.map(
-        functools.partial(np.testing.assert_allclose, rtol=3e-7),
-        scaled_grads,
-        expected_grads,
-    )
+        expected_grads = flax_core.freeze(
+            {
+                "encoder": {
+                    "expert_layer": 100.0 * jnp.ones((2, 3)),
+                    "regular_layer": jnp.ones((1, 2)),
+                }
+            }
+        )
+        jax.tree.map(
+            functools.partial(np.testing.assert_allclose, rtol=3e-7),
+            scaled_grads,
+            expected_grads,
+        )
 
 
 class TreeTest(absltest.TestCase):
+    def test_tree_flatten_with_names(self):
+        tree = {"ff_0": {"kernel": 0, "bias": 1}, "ff_1": {"kernel": 2, "bias": 3}}
+        names_and_values, _ = training_utils._tree_flatten_with_names(tree)
 
-  def test_tree_flatten_with_names(self):
-    tree = {'ff_0': {'kernel': 0, 'bias': 1}, 'ff_1': {'kernel': 2, 'bias': 3}}
-    names_and_values, _ = training_utils._tree_flatten_with_names(tree)
+        expected_names_and_values = [
+            ("ff_0/bias", 1),
+            ("ff_0/kernel", 0),
+            ("ff_1/bias", 3),
+            ("ff_1/kernel", 2),
+        ]
+        self.assertEqual(names_and_values, expected_names_and_values)
 
-    expected_names_and_values = [
-        ('ff_0/bias', 1),
-        ('ff_0/kernel', 0),
-        ('ff_1/bias', 3),
-        ('ff_1/kernel', 2),
-    ]
-    self.assertEqual(names_and_values, expected_names_and_values)
+        # Check that values match regular JAX tree_flatten.
+        self.assertEqual(
+            [x for _, x in names_and_values], jax.tree_util.tree_flatten(tree)[0]
+        )
 
-    # Check that values match regular JAX tree_flatten.
-    self.assertEqual(
-        [x for _, x in names_and_values], jax.tree_util.tree_flatten(tree)[0]
-    )
+    def test_tree_map_with_names(self):
+        tree = {"a": 1, "b": 2}
+        mapped_tree = training_utils.tree_map_with_names(
+            f=lambda x: -x, param_tree=tree, match_name_fn=lambda name: name == "b"
+        )
 
-  def test_tree_map_with_names(self):
-    tree = {'a': 1, 'b': 2}
-    mapped_tree = training_utils.tree_map_with_names(
-        f=lambda x: -x, param_tree=tree, match_name_fn=lambda name: name == 'b'
-    )
-
-    self.assertEqual(mapped_tree, {'a': 1, 'b': -2})
+        self.assertEqual(mapped_tree, {"a": 1, "b": -2})
 
 
-if __name__ == '__main__':
-  absltest.main()
+if __name__ == "__main__":
+    absltest.main()

@@ -17,4 +17,4 @@
 import gc
 
 if gc.isenabled():
-  raise ValueError("Expected gc to be disabled; was enabled.")
+    raise ValueError("Expected gc to be disabled; was enabled.")

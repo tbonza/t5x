@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """T5_1_1 Model Configurations, similar to t5x/examples/t5/t5_1_1/*.gin."""
+
 from typing import Optional
 
 import fiddle as fdl
@@ -31,23 +32,23 @@ LOSS_NORMALIZING_FACTOR = None
 
 
 def vocabulary() -> fdl.Buildable[seqio.SentencePieceVocabulary]:
-  return fdl.Config(
-      seqio.SentencePieceVocabulary,
-      sentencepiece_model_file=(
-          'gs://t5-data/vocabs/cc_all.32000.100extra/sentencepiece.model'
-      ),
-  )
+    return fdl.Config(
+        seqio.SentencePieceVocabulary,
+        sentencepiece_model_file=(
+            "gs://t5-data/vocabs/cc_all.32000.100extra/sentencepiece.model"
+        ),
+    )
 
 
 def optimizer() -> fdl.Buildable[optimizers.OptimizerDef]:
-  return fdl.Config(
-      adafactor.Adafactor,
-      decay_rate=0.8,
-      step_offset=0,
-      logical_factor_rules=fdl.Config(
-          adafactor.standard_logical_factor_rules,
-      ),
-  )
+    return fdl.Config(
+        adafactor.Adafactor,
+        decay_rate=0.8,
+        step_offset=0,
+        logical_factor_rules=fdl.Config(
+            adafactor.standard_logical_factor_rules,
+        ),
+    )
 
 
 def model(
@@ -56,51 +57,51 @@ def model(
     label_smoothing: float = LABEL_SMOOTHING,
     loss_normalizing_factor: Optional[float] = LOSS_NORMALIZING_FACTOR,
 ) -> fdl.Buildable[models.BaseTransformerModel]:
-  return fdl.Config(
-      models.EncoderDecoderModel,
-      module=fdl.Config(  # pytype: disable=wrong-arg-types  # use-fiddle-overlay
-          network.Transformer,
-          config=config,
-      ),
-      input_vocabulary=vocabulary(),
-      output_vocabulary=vocabulary(),
-      optimizer_def=optimizer(),
-      z_loss=z_loss,
-      label_smoothing=label_smoothing,
-      loss_normalizing_factor=loss_normalizing_factor,
-  )
+    return fdl.Config(
+        models.EncoderDecoderModel,
+        module=fdl.Config(  # pytype: disable=wrong-arg-types  # use-fiddle-overlay
+            network.Transformer,
+            config=config,
+        ),
+        input_vocabulary=vocabulary(),
+        output_vocabulary=vocabulary(),
+        optimizer_def=optimizer(),
+        z_loss=z_loss,
+        label_smoothing=label_smoothing,
+        loss_normalizing_factor=loss_normalizing_factor,
+    )
 
 
 def base_config(
     dropout_rate: Optional[float],
 ) -> fdl.Buildable[network.T5Config]:
-  return fdl.Config(
-      network.T5Config,
-      # vocab size rounded to a multiple of 128 for TPU efficiency
-      vocab_size=32128,
-      dtype='bfloat16',
-      emb_dim=768,
-      num_heads=12,
-      num_encoder_layers=12,
-      num_decoder_layers=12,
-      head_dim=64,
-      mlp_dim=2048,
-      mlp_activations=('gelu', 'linear'),
-      dropout_rate=dropout_rate,
-      logits_via_embedding=False,
-  )
+    return fdl.Config(
+        network.T5Config,
+        # vocab size rounded to a multiple of 128 for TPU efficiency
+        vocab_size=32128,
+        dtype="bfloat16",
+        emb_dim=768,
+        num_heads=12,
+        num_encoder_layers=12,
+        num_decoder_layers=12,
+        head_dim=64,
+        mlp_dim=2048,
+        mlp_activations=("gelu", "linear"),
+        dropout_rate=dropout_rate,
+        logits_via_embedding=False,
+    )
 
 
 def small_config(
     dropout_rate: Optional[float],
 ) -> fdl.Buildable[network.T5Config]:
-  config = base_config(dropout_rate=dropout_rate)
-  return fdl.copy_with(
-      config,
-      emb_dim=512,
-      num_heads=6,
-      num_encoder_layers=8,
-      num_decoder_layers=8,
-      head_dim=64,
-      mlp_dim=1024,
-  )
+    config = base_config(dropout_rate=dropout_rate)
+    return fdl.copy_with(
+        config,
+        emb_dim=512,
+        num_heads=6,
+        num_encoder_layers=8,
+        num_decoder_layers=8,
+        head_dim=64,
+        mlp_dim=1024,
+    )

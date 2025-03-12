@@ -22,12 +22,14 @@ FrozenDict = flax_core.FrozenDict
 
 
 def logical_factor_rules() -> FrozenDict:
-  """Logical factor rules for Mixture of Experts."""
-  rules = flax_core.unfreeze(adafactor.standard_logical_factor_rules())
-  rules.update({
-      'expert': FactorDim.BATCH,
-      'expert_mlp': FactorDim.COLUMN,
-      'unmodeled': FactorDim.NONE,
-      'mlp_embed': FactorDim.ROW,  # Same factoring as 'embed'
-  })
-  return flax_core.freeze(rules)
+    """Logical factor rules for Mixture of Experts."""
+    rules = flax_core.unfreeze(adafactor.standard_logical_factor_rules())
+    rules.update(
+        {
+            "expert": FactorDim.BATCH,
+            "expert_mlp": FactorDim.COLUMN,
+            "unmodeled": FactorDim.NONE,
+            "mlp_embed": FactorDim.ROW,  # Same factoring as 'embed'
+        }
+    )
+    return flax_core.freeze(rules)

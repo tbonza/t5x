@@ -15,7 +15,6 @@
 import functools
 
 import seqio
-import t5.data
 from t5.data import preprocessors
 
 TaskRegistry = seqio.TaskRegistry
@@ -26,12 +25,14 @@ DEFAULT_OUTPUT_FEATURES = {
             sentencepiece_model_file="gs://t5-data/vocabs/cc_all.32000.100extra/sentencepiece.model",
         ),
         add_eos=True,
-        required=False),
+        required=False,
+    ),
     "targets": seqio.Feature(
         vocabulary=seqio.SentencePieceVocabulary(
             sentencepiece_model_file="gs://t5-data/vocabs/cc_all.32000.100extra/sentencepiece.model",
         ),
-        add_eos=True)
+        add_eos=True,
+    ),
 }
 
 # ================================ Wikipedia ===================================
@@ -40,14 +41,13 @@ TaskRegistry.add(
     source=seqio.TfdsDataSource(tfds_name="wikipedia/20190301.als:1.0.0"),
     preprocessors=[
         functools.partial(
-            preprocessors.rekey, key_map={
-                "inputs": None,
-                "targets": "text"
-            }),
+            preprocessors.rekey, key_map={"inputs": None, "targets": "text"}
+        ),
         seqio.preprocessors.tokenize,
         seqio.CacheDatasetPlaceholder(),
         preprocessors.unsupervised,
         seqio.preprocessors.append_eos_after_trim,
     ],
     output_features=DEFAULT_OUTPUT_FEATURES,
-    metric_fns=[])
+    metric_fns=[],
+)
